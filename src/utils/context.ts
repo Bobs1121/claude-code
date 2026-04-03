@@ -52,6 +52,10 @@ export function getContextWindowForModel(
   model: string,
   betas?: string[],
 ): number {
+  if (isEnvTruthy(process.env.CLAUDE_CODE_USE_OPENAI)) {
+    return parseInt(process.env.OPENAI_CONTEXT_LENGTH || '131072', 10)
+  }
+
   // Allow override via environment variable (ant-only)
   // This takes precedence over all other context window resolution, including 1M detection,
   // so users can cap the effective context window for local decisions (auto-compact, etc.)
@@ -150,6 +154,12 @@ export function getModelMaxOutputTokens(model: string): {
   default: number
   upperLimit: number
 } {
+  if (isEnvTruthy(process.env.CLAUDE_CODE_USE_OPENAI)) {
+    const ctxLen = parseInt(process.env.OPENAI_CONTEXT_LENGTH || '131072', 10)
+    const maxOut = Math.min(16384, Math.floor(ctxLen * 0.15))
+    return { default: maxOut, upperLimit: maxOut }
+  }
+
   let defaultTokens: number
   let upperLimit: number
 

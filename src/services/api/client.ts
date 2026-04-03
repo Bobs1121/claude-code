@@ -128,12 +128,14 @@ export async function getAnthropicClient({
     defaultHeaders['x-anthropic-additional-protection'] = 'true'
   }
 
-  logForDebugging('[API:auth] OAuth token check starting')
-  await checkAndRefreshOAuthTokenIfNeeded()
-  logForDebugging('[API:auth] OAuth token check complete')
+  if (!isEnvTruthy(process.env.CLAUDE_CODE_USE_OPENAI)) {
+    logForDebugging('[API:auth] OAuth token check starting')
+    await checkAndRefreshOAuthTokenIfNeeded()
+    logForDebugging('[API:auth] OAuth token check complete')
 
-  if (!isClaudeAISubscriber()) {
-    await configureApiKeyHeaders(defaultHeaders, getIsNonInteractiveSession())
+    if (!isClaudeAISubscriber()) {
+      await configureApiKeyHeaders(defaultHeaders, getIsNonInteractiveSession())
+    }
   }
 
   const resolvedFetch = buildFetch(fetchOverride, source)
@@ -149,6 +151,21 @@ export async function getAnthropicClient({
     ...(resolvedFetch && {
       fetch: resolvedFetch,
     }),
+  }
+  if (isEnvTruthy(process.env.CLAUDE_CODE_USE_OPENAI)) {
+    const { createOpenAIAdaptedClient } = await import('./openaiAdapter.js')
+    const openaiBaseURL =
+      process.env.OPENAI_BASE_URL || 'http://10.190.179.61:11999/qwen3_5/v1'
+    const openaiApiKey = process.env.OPENAI_API_KEY || 'dummy'
+    const openaiModel = process.env.OPENAI_MODEL || 'Qwen3.5-27B-FP16'
+    return createOpenAIAdaptedClient({
+      baseURL: openaiBaseURL,
+      model: openaiModel,
+      apiKey: openaiApiKey,
+      timeout: parseInt(process.env.API_TIMEOUT_MS || String(600 * 1000), 10),
+      defaultHeaders,
+      fetchOverride: resolvedFetch,
+    })
   }
   if (isEnvTruthy(process.env.CLAUDE_CODE_USE_BEDROCK)) {
     const { AnthropicBedrock } = await import('@anthropic-ai/bedrock-sdk')

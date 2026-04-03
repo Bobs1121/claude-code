@@ -33,7 +33,16 @@ export type ModelShortName = string
 export type ModelName = string
 export type ModelSetting = ModelName | ModelAlias | null
 
+function getOpenAIModel(): ModelName {
+  return process.env.OPENAI_MODEL || 'Qwen3.5-27B-FP16'
+}
+
+function isOpenAIProvider(): boolean {
+  return getAPIProvider() === 'openai'
+}
+
 export function getSmallFastModel(): ModelName {
+  if (isOpenAIProvider()) return getOpenAIModel()
   return process.env.ANTHROPIC_SMALL_FAST_MODEL || getDefaultHaikuModel()
 }
 
@@ -90,6 +99,7 @@ export function getUserSpecifiedModelSetting(): ModelSetting | undefined {
  * @returns The resolved model name to use
  */
 export function getMainLoopModel(): ModelName {
+  if (isOpenAIProvider()) return getOpenAIModel()
   const model = getUserSpecifiedModelSetting()
   if (model !== undefined && model !== null) {
     return parseUserSpecifiedModel(model)
@@ -98,17 +108,16 @@ export function getMainLoopModel(): ModelName {
 }
 
 export function getBestModel(): ModelName {
+  if (isOpenAIProvider()) return getOpenAIModel()
   return getDefaultOpusModel()
 }
 
 // @[MODEL LAUNCH]: Update the default Opus model (3P providers may lag so keep defaults unchanged).
 export function getDefaultOpusModel(): ModelName {
+  if (isOpenAIProvider()) return getOpenAIModel()
   if (process.env.ANTHROPIC_DEFAULT_OPUS_MODEL) {
     return process.env.ANTHROPIC_DEFAULT_OPUS_MODEL
   }
-  // 3P providers (Bedrock, Vertex, Foundry) — kept as a separate branch
-  // even when values match, since 3P availability lags firstParty and
-  // these will diverge again at the next model launch.
   if (getAPIProvider() !== 'firstParty') {
     return getModelStrings().opus46
   }
@@ -117,10 +126,10 @@ export function getDefaultOpusModel(): ModelName {
 
 // @[MODEL LAUNCH]: Update the default Sonnet model (3P providers may lag so keep defaults unchanged).
 export function getDefaultSonnetModel(): ModelName {
+  if (isOpenAIProvider()) return getOpenAIModel()
   if (process.env.ANTHROPIC_DEFAULT_SONNET_MODEL) {
     return process.env.ANTHROPIC_DEFAULT_SONNET_MODEL
   }
-  // Default to Sonnet 4.5 for 3P since they may not have 4.6 yet
   if (getAPIProvider() !== 'firstParty') {
     return getModelStrings().sonnet45
   }
@@ -129,11 +138,10 @@ export function getDefaultSonnetModel(): ModelName {
 
 // @[MODEL LAUNCH]: Update the default Haiku model (3P providers may lag so keep defaults unchanged).
 export function getDefaultHaikuModel(): ModelName {
+  if (isOpenAIProvider()) return getOpenAIModel()
   if (process.env.ANTHROPIC_DEFAULT_HAIKU_MODEL) {
     return process.env.ANTHROPIC_DEFAULT_HAIKU_MODEL
   }
-
-  // Haiku 4.5 is available on all platforms (first-party, Foundry, Bedrock, Vertex)
   return getModelStrings().haiku45
 }
 
@@ -147,6 +155,7 @@ export function getRuntimeMainLoopModel(params: {
   mainLoopModel: string
   exceeds200kTokens?: boolean
 }): ModelName {
+  if (isOpenAIProvider()) return getOpenAIModel()
   const { permissionMode, mainLoopModel, exceeds200kTokens = false } = params
 
   // opusplan uses Opus in plan mode without [1m] suffix.
@@ -176,6 +185,7 @@ export function getRuntimeMainLoopModel(params: {
  * @returns The default model setting to use
  */
 export function getDefaultMainLoopModelSetting(): ModelName | ModelAlias {
+  if (isOpenAIProvider()) return getOpenAIModel()
   // Ants default to defaultModel from flag config, or Opus 1M if not configured
   if (process.env.USER_TYPE === 'ant') {
     return (

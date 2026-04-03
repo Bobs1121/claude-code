@@ -1,0 +1,7 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(find . -maxdepth 3 -name *.json -o -name .env*)"
+    ]
+  }
+}
